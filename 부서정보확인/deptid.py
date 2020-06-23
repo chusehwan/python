@@ -71,7 +71,8 @@ def image_search_only(file_name, route):
 origin_folder = 'D:\\세환\\python\\사번추출'
 image_folder = 'D:\\세환\\python\\사번추출\\image'
 os.chdir(origin_folder)
-wb = load_workbook('employee_no_result.xlsx')
+wb = load_workbook(''
+                   '.xlsx')
 ws = wb.active
 init_cell_row = 1
 init_cell_col = 1

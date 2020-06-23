@@ -83,7 +83,7 @@ def get_flight_info(driver, awb_num, dept_pcs, arr_pcs):
     if len(splited_d_info) == 1 and dept_pcs != None and len(splited_d_info_2) == 2:
         ATD = splited_d_info_2[1][:16]
     # CASE2. Departure관련 첫줄에 STD, ATD 나온 경우
-    elif len(splited_d_info) == 2 :
+    elif len(splited_d_info) == 2:
         ATD = splited_d_info[1][:16]
     # CASE3. Departure관련 첫줄에 STD, ETD, ATD 나온 경우
     elif len(splited_d_info) == 3:

@@ -104,7 +104,11 @@ def get_tracking_info_ke(list, driver_dir, row_num, ws):
         pol_atd = check_status_value(status_list, status='Departed', list_1=-1, list_2=-2)
         # 도착했으면 시간 반환, 안했으면 None반환
         pod_ata = check_status_value(status_list, status='Arrived', list_1=-1, list_2=-2)
-        pol_etd = driver.find_element_by_xpath(pol_etd_address)
+        try:
+            # 18071573246 <-이런 케이스 발생에 대한 try-except문
+           pol_etd = driver.find_element_by_xpath(pol_etd_address)
+        except:
+            continue
         pod_eta = driver.find_element_by_xpath(pod_eta_address)
 
         """위에서 확인된 부킹 pcs, received pcs, 부킹 편명, 출발 편명, status상 출발, 도착일정, 그래프상 일정 비교 하여 
