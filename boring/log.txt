@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "D:/세환/python/boring/windowsswitch.py", line 51, in main
+    cW.SetAsForegroundWindow()
+  File "D:/세환/python/boring/windowsswitch.py", line 12, in SetAsForegroundWindow
+    win32gui.SetForegroundWindow(self._hwnd)
+pywintypes.error: (1400, 'SetForegroundWindow', '잘못된 창 핸들입니다.')

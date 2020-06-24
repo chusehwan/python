@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "D:\세환\python\container_part\switch_app.py", line 51, in switch_app
+    cW.SetAsForegroundWindow()
+  File "D:\세환\python\container_part\switch_app.py", line 12, in SetAsForegroundWindow
+    win32gui.SetForegroundWindow(self._hwnd)
+pywintypes.error: (126, 'SetForegroundWindow', '지정된 모듈을 찾을 수 없습니다.')

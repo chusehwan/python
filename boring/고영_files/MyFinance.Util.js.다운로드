@@ -1,0 +1,255 @@
+/**
+ * MY금융 Utility
+ *
+ * depends:
+ * - jindo.ns.js
+ * - JSUtility.ns.js
+ * - MyFinance.Core.js
+ */
+MyFinance.Util.SortableArray = jindo.$Class({
+	_array : null,
+	sortColumn : null,
+	sortType : null,
+	defaultColumnName : null,
+	$init : function(array, defaultColumnName) {
+		this._array = [];
+		for(var i = 0; i < array.length; i++) {
+			this._array[this._array.length] = array[i];
+		}
+
+		this.defaultColumnName = defaultColumnName;
+	},
+	reset : function() {
+		var _this = this;
+		this.sortColumn = '';
+		this.sortType = '';
+
+		this._array.sort(function(l, r) {
+			var left = eval("l." + _this.defaultColumnName);
+			var right = eval("r." + _this.defaultColumnName);
+
+			return left - right;
+		});
+	},
+	sort : function(sortColumn) {
+		if(this.sortColumn == sortColumn) {
+			if(this.sortType == 'desc') {
+				this.sortType = 'asc';
+			} else {
+				this.sortType = 'desc';
+			}
+		} else {
+			this.sortType = 'asc';
+		}
+
+		this.sortColumn = sortColumn;
+		if(this.sortType == 'desc') {
+			this._array.sort(function(l, r) {
+				var left = eval("l." + sortColumn);
+				var right = eval("r." + sortColumn);
+				
+				// 숫자가 아닌 문자열인 경우에 대해서 예외처리 STOCKSUS-4372
+				if (isNaN(left) || isNaN(right)) {
+					if(left > right) { 
+						return -1;
+					} else {
+						return 1;
+					}
+				}
+
+				return left - right;
+			});
+		} else {
+			this._array.sort(function(l, r) {
+				var left = eval("l." + sortColumn);
+				var right = eval("r." + sortColumn);
+
+				// 숫자가 아닌 문자열인 경우에 대해서 예외처리 STOCKSUS-4372
+				if (isNaN(left) || isNaN(right)) {
+					if(left > right) { 
+						return 1;
+					} else {
+						return -1;
+					}
+				}
+				
+				return right - left;
+			});
+		}
+	},
+	$value : function() {
+		return this._array;
+	}
+});
+
+MyFinance.Util.Ajax = jindo.$Class({
+	ajax : null,
+	$init : function(apiUrl) {
+		var _this = this;
+
+		this.ajax = new jindo.$Ajax(apiUrl, {
+			type : 'xhr',
+			method : 'post',
+			onload : function(response) {
+				var res = response.json();
+
+				if (res.resultCode == 'success') {
+					_this.onSuccess(res.result);
+				} else if (res.resultCode == 'error') {
+					_this.onFailure(res.result);
+				} else {
+					_this.onError();
+				}
+			},
+			timeout : 3,
+			ontimeout : _this.onError,
+			async : true
+		});
+	},
+	request : function(param) {
+		this.ajax.request(param);
+	},
+	onSuccess : function(result) {
+	},
+	onFailure : function(result) {
+		alert(MyFinance.Util.unescapeMessage(result.errorMessage));
+	},
+	onError : function() {
+		alert('서버에서 응답이 없습니다.\n\n잠시 후 다시 시도해주세요.');
+	}
+});
+
+MyFinance.Util.printAmount = function(n, digit, isAttachSign) {
+	var result = n;
+
+	if(typeof(result) == 'number') {
+		result = MyFinance.Util.toFixed(result, digit);
+
+		if(isAttachSign) {
+			result = MyFinance.Util.attachSign(result);
+		}
+
+		result = changeNumberFormat(result);
+	}
+
+	return result;
+}
+
+MyFinance.Util.printAmountRoundTenBillion = function(n, digit, isAttachSign, surfix) {
+	var TEN_BILLION = 10000000000;
+	var HUNDRED_MILLION = 100000000;
+
+	var result = n;
+
+	if(typeof(result) == 'number') {
+		if(Math.abs(result) >= TEN_BILLION) {
+			result /= HUNDRED_MILLION;
+		} else {
+			surfix = '';
+		}
+
+		result = MyFinance.Util.toFixed(result, digit);
+
+		if(isAttachSign) {
+			result = MyFinance.Util.attachSign(result);
+		}
+
+		result = changeNumberFormat(result);
+		result += surfix;
+	}
+
+	return result;
+}
+
+MyFinance.Util.attachSign = function(n) {
+	return (n > 0 ? '+' + n : '' + n);
+}
+
+MyFinance.Util.toFixed = function(n, digit) {
+	var result = '0.00';
+
+	if (digit < 0) {
+		digit = 2;
+	}
+
+	if (typeof (n) == 'number') {
+		result = n.toFixed(digit);
+	}
+
+	return result;
+}
+
+MyFinance.Util.unescapeMessage = function(str) {
+	if (str != null) {
+		str = str.replace(/\\r/g, '\r');
+		str = str.replace(/\\n/g, '\n');
+	}
+
+	return str;
+}
+
+MyFinance.Util._holiday = {"2000":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"11":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"5":true,"6":true},"9":{"11":true,"12":true,"13":true}},"2001":{"1":{"1":true,"24":true,"25":true},"3":{"1":true},"5":{"5":true,"1":true},"6":{"6":true},"8":{"15":true},"10":{"3":true,"1":true,"2":true},"12":{"25":true},"9":{"30":true}},"2002":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"19":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"11":true,"12":true,"13":true},"9":{"20":true,"21":true,"22":true}},"2003":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"8":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"1":true,"2":true},"9":{"10":true,"11":true,"12":true}},"2004":{"1":{"1":true,"21":true,"22":true,"23":true},"3":{"1":true},"5":{"5":true,"26":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"9":{"27":true,"28":true,"29":true}},"2005":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"15":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"8":true,"9":true,"10":true},"9":{"17":true,"18":true,"19":true}},"2006":{"1":{"1":true,"29":true,"30":true},"3":{"1":true},"5":{"5":true},"6":{"6":true},"8":{"15":true},"10":{"3":true,"5":true,"6":true,"7":true},"12":{"25":true}},"2007":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"24":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"17":true,"18":true,"19":true},"9":{"24":true,"25":true,"26":true}},"2008":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"12":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"6":true,"7":true,"8":true},"9":{"13":true,"14":true,"15":true}},"2009":{"1":{"1":true,"25":true,"26":true,"27":true},"3":{"1":true},"5":{"5":true,"2":true},"6":{"6":true},"8":{"15":true},"10":{"3":true,"2":true,"4":true},"12":{"25":true}},"2010":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"21":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"13":true,"14":true,"15":true},"9":{"21":true,"22":true,"23":true}},"2011":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"10":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"2":true,"3":true,"4":true},"9":{"11":true,"12":true,"13":true}},"2012":{"1":{"1":true,"23":true,"24":true},"3":{"1":true},"5":{"5":true,"28":true},"6":{"6":true},"8":{"15":true},"10":{"3":true,"1":true},"12":{"25":true},"9":{"29":true,"30":true}},"2013":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"17":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"10":true,"11":true},"9":{"18":true,"19":true,"20":true}},"2014":{"1":{"1":true,"30":true,"31":true},"3":{"1":true},"5":{"5":true,"6":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"1":true},"9":{"7":true,"8":true,"9":true}},"2015":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"25":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"18":true,"19":true,"20":true},"9":{"26":true,"27":true,"28":true}},"2016":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"14":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"8":true,"9":true},"9":{"14":true,"15":true,"16":true}},"2017":{"1":{"1":true,"27":true,"28":true,"29":true},"3":{"1":true},"5":{"5":true,"3":true},"6":{"6":true},"8":{"15":true},"10":{"3":true,"4":true,"5":true},"12":{"25":true}},"2018":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"22":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"15":true,"16":true,"17":true},"9":{"23":true,"24":true,"25":true}},"2019":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"12":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"4":true,"5":true,"6":true},"9":{"12":true,"13":true,"14":true}},"2020":{"1":{"1":true,"24":true,"25":true,"26":true},"3":{"1":true},"5":{"5":true},"6":{"6":true},"8":{"15":true},"10":{"3":true,"1":true,"2":true},"12":{"25":true},"4":{"30":true},"9":{"30":true}},"2021":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"19":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"11":true,"12":true,"13":true},"9":{"20":true,"21":true,"22":true}},"2022":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"8":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"1":true,"2":true},"9":{"9":true,"10":true,"11":true}},"2023":{"1":{"1":true,"21":true,"22":true,"23":true},"3":{"1":true},"5":{"5":true,"27":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"9":{"28":true,"29":true,"30":true}},"2024":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"15":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"9":true,"10":true,"11":true},"9":{"16":true,"17":true,"18":true}},"2025":{"1":{"1":true,"29":true,"30":true},"3":{"1":true},"5":{"5":true},"6":{"6":true},"8":{"15":true},"10":{"3":true,"5":true,"6":true,"7":true},"12":{"25":true}},"2026":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"24":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"17":true,"18":true},"9":{"24":true,"25":true,"26":true}},"2027":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"13":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"6":true,"7":true,"8":true},"9":{"14":true,"15":true,"16":true}},"2028":{"1":{"1":true,"26":true,"27":true,"28":true},"3":{"1":true},"5":{"5":true,"2":true},"6":{"6":true},"8":{"15":true},"10":{"3":true,"2":true,"4":true},"12":{"25":true}},"2029":{"1":{"1":true},"3":{"1":true},"5":{"5":true,"20":true},"6":{"6":true},"8":{"15":true},"10":{"3":true},"12":{"25":true},"2":{"13":true,"14":true},"9":{"21":true,"22":true,"23":true}}};
+MyFinance.Util.isHoliday = function(year, month, date) {
+	var oHoliday = MyFinance.Util._holiday;
+	return (oHoliday[year] && oHoliday[year][parseInt(month * 1)] && oHoliday[year][parseInt(month * 1)][date]);
+}
+
+MyFinance.Util.parseDate = function(str) {
+	if(/^\d{4}(\/)\d{1,2}\1\d{1,2}$/.test(str) == false) {
+		return '매매일을 YYYY/MM/DD 형식으로 입력해주세요.';
+		return null;
+	}
+
+	var token = str.split('/');
+
+	var year = parseInt(token[0], 10);
+	var month = parseInt(token[1], 10);
+	var date = parseInt(token[2], 10);
+	var MAX_DATE = 31;
+	
+	var oDate = new jindo.$Date();
+	oDate.year(year);
+	oDate.month(month - 1);
+
+	if(month == 2) {
+		MAX_DATE = 28;
+
+		if(oDate.isLeapYear()) {
+			MAX_DATE = 29;
+		}
+	}
+
+	if((year < 1900 || year > 2100) || (month < 0 || month > 12) || (date < 0 || date > MAX_DATE)) {
+		return '날짜 범위를 벗어났습니다.';
+	}
+
+	oDate.date(date);
+
+	if(oDate.day() == 0 || oDate.day() == 6 || MyFinance.Util.isHoliday(oDate.year(), oDate.month() + 1, oDate.date())) {
+		return '거래일을 정확히 입력해주세요. 주말 및 공휴일은 입력되지 않습니다.';
+	}
+
+	return oDate;
+}
+
+MyFinance.Util.createLayerManager = function(el) {
+	var layerManager = new jindo.LayerManager(el, {
+		sCheckEvent : "click",
+		nShowDelay : 0,
+		nHideDelay : 0
+	});
+
+	layerManager._wel.hide = function() {
+		layerManager._wel.addClass('blind');
+	}
+
+	layerManager._wel.show = function() {
+		layerManager._wel.removeClass('blind');
+	}
+
+	layerManager.getVisible = jindo.$Fn(function() {
+		return !jindo.$Element(el).hasClass('blind');
+	}, this).bind();
+
+	return layerManager;
+}

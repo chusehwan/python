@@ -1,0 +1,16 @@
+/**
+ * MY±ÝÀ¶ Core
+ */
+if (typeof window != "undefined") {
+	window.MyFinance = {};
+	window.MyFinance.Util = {};
+	window.MyFinance.Component = {};
+	window.MyFinance.MyStock = {};
+	window.MyFinance.MyFund = {};
+} else {
+	MyFinance = {};
+	MyFinance.Util = {};
+	MyFinance.Component = {};
+	MyFinance.MyStock = {};
+	MyFinance.MyFund = {};
+}

@@ -1,0 +1,341 @@
+/**
+ * 종목 이동 레이어
+ *
+ * extends:
+ * - jindo.UIComponent
+ *
+ * depends:
+ * - jindo.ns.js
+ * - jindo.Component.js
+ * - jindo.UIConponent.js
+ * - jindo.Timer.js
+ * - jindo.LayerManager.js
+ * - jindo.LayerPosition.js
+ * - MyFinance.Core.js
+ * - MyFinance.Util.js
+ */
+MyFinance.MyStock.ItemAddLayer = jindo.$Class({
+	$init : function(el, htOption) {
+		this._el = jindo.$(el);
+		this._wel = jindo.$Element(this._el);
+		this.option({
+			'LayerPosition': {
+				sPosition : "outside-bottom",
+				sAlign : "left",
+				nTop : 4,
+				nLeft : -2
+			}
+		});
+		this.option(htOption || {});
+
+		this._assignHTMLElements();
+		this._initLayerManager();
+
+		this._bAddState = false;
+
+		this._fGroupClicked = jindo.$Fn(this._onGroupClicked, this).bind();
+		this._fGroupMouseOver = jindo.$Fn(this._onGroupMouseOver, this).bind();
+		this._fGroupMouseOut = jindo.$Fn(this._onGroupMouseOut, this).bind();
+		this._fGroupAddClicked = jindo.$Fn(this._onGroupAddClicked, this).bind();
+		this._fGroupAddOkClicked = jindo.$Fn(this._onGroupAddOkClicked, this).bind();
+		this._fGroupAddCancelClicked = jindo.$Fn(this._onGroupAddCancelClicked, this).bind();
+		this._fCloseClicked = jindo.$Fn(this._onCloseClicked, this).bind();
+		this._fFinishClicked = jindo.$Fn(this._onFinishClicked, this).bind();
+		this._fSubmitClicked = jindo.$Fn(this._onSubmitClicked, this).bind();
+
+		this.activate();
+	},
+	_onActivate : function() {
+		this._wel.delegate('click', '.item', this._fGroupClicked);
+		this._wel.delegate('mouseover', '.item', this._fGroupMouseOver);
+		this._wel.delegate('mouseout', '.item', this._fGroupMouseOut);
+		this._wel.delegate('click', '.btn_groupadd2', this._fGroupAddClicked);
+		this._wel.delegate('click', '._btn_add_ok', this._fGroupAddOkClicked);
+		this._wel.delegate('click', '._btn_add_cancel', this._fGroupAddCancelClicked);
+		this._wel.delegate('click', '._btn_cancel', this._fCloseClicked);
+		this._wel.delegate('click', '._btn_finish', this._fFinishClicked);
+		this._wel.delegate('click', '._btn_ok', this._fSubmitClicked);
+	},
+	_onDeactivate : function() {
+		this._wel.undelegate('click', '.item', this._fGroupClicked);
+		this._wel.undelegate('mouseover', '.item', this._fGroupMouseOver);
+		this._wel.undelegate('mouseout', '.item', this._fGroupMouseOut);
+		this._wel.undelegate('click', '.btn_groupadd2', this._fGroupAddClicked);
+		this._wel.undelegate('click', '._btn_add_ok', this._fGroupAddOkClicked);
+		this._wel.undelegate('click', '._btn_add_cancel', this._fGroupAddCancelClicked);
+		this._wel.undelegate('click', '._btn_cancel', this._fCloseClicked);
+		this._wel.undelegate('click', '._btn_finish', this._fFinishClicked);
+		this._wel.undelegate('click', '._btn_ok', this._fSubmitClicked);
+	},
+	_onGroupClicked : function(e) {
+		e.stopDefault();
+		if(this._isAddState()) {return;}
+		jindo.$A(this._wel.queryAll('.item')).forEach(function(v,i,a) {
+			if(e.element == v) {
+				jindo.$Element(jindo.$$.getSingle('INPUT[type=checkbox]', e.element)).attr('checked', 'checked');
+				e.element.className = 'item ovr chk';
+			} else {
+				jindo.$Element(jindo.$$.getSingle('INPUT[type=checkbox]', v)).attr('checked', '');
+				v.className = 'item';
+			}
+		});
+	},
+	_onGroupMouseOver : function(e) {
+		jindo.$Element(e.element).addClass('ovr');
+	},
+	_onGroupMouseOut : function(e) {
+		jindo.$Element(e.element).removeClass('ovr');
+	},
+	_onGroupAddClicked : function(e) {
+		e.stopDefault();
+		if(!this._isAddState()) {
+			this._bAddState = true;
+			var welLiAddNewGroup = jindo.$Element(jindo.$$.getSingle('.add', this._el));
+			if(welLiAddNewGroup) {
+				welLiAddNewGroup.leave();
+			}
+			this._addNewGroupForm();
+
+			this._elLyGroupList.scrollTop = this._elLyGroupList.scrollHeight;
+		}
+	},
+	_onGroupAddOkClicked : function(e) {
+		e.stopDefault();
+		var oAjax = new MyFinance.Util.Ajax('/mystock/api/addGroup.nhn');
+		oAjax.onSuccess = jindo.$Fn(function(result) {
+			this._bAddState = false;
+			this._groups[this._groups.length] = result;
+			this._addGroup(result.groupId, result.groupName);
+			jindo.$Element(jindo.$$.getSingle('.add', this._el)).hide();
+		}, this).bind();
+		oAjax.request({
+			groupName : encodeURIComponent(jindo.$$.getSingle('INPUT[type=text]', this._el).value)
+		});
+	},
+	_onGroupAddCancelClicked : function(e) {
+		e.stopDefault();
+		this._bAddState = false;
+		jindo.$Element(jindo.$$.getSingle('.add', this._el)).hide();
+	},
+	_onCloseClicked : function(e) {
+		e.stopDefault();
+		this._layerManager.hide();
+	},
+	_onFinishClicked : function(e) {
+		e.stopDefault();
+		document.location.reload();
+	},
+	_onSubmitClicked : function(e) {
+		e.stopDefault();
+		var el = jindo.$$.getSingle('INPUT[type=checkbox][checked]', this._el);
+		if(!el) {
+			alert('그룹을 선택해주세요.');
+		} else {
+			this._submit(el.value);
+		}
+	},
+	_assignHTMLElements : function() {
+		this._elLyGroup = jindo.$$.getSingle('._ly_group', this._el);
+		this._elLyGroupList = jindo.$$.getSingle('._ly_group_list', this._el);
+		this._elGroupList = jindo.$$.getSingle('UL', this._el);
+		this._elLyGroupBlank = jindo.$$.getSingle('._ly_group_blank', this._el);
+		this._elLyMessage = jindo.$$.getSingle('._ly_message', this._el);
+	},
+	_initLayerManager : function() {
+		this._layerManager = MyFinance.Util.createLayerManager(this._el);
+		this._layerManager.attach({
+			'beforeHide' : jindo.$Fn(function(e) {
+				if(this._isAddState()) {
+					e.stop();
+				}
+			}, this).bind()
+		});
+		this._layerManager.link(this._el);
+	},
+	_drawGroupList : function(groups) {
+		jindo.$Element(this._elGroupList).empty();
+
+		if(groups.length > 0) {
+			jindo.$A(groups).forEach(function(v,i,a) {
+				this._addGroup(v.groupId, v.groupName, i);
+			}, this);
+		} else {
+			jindo.$Element(this._elLyGroupList).hide();
+			jindo.$Element(this._elLyGroupBlank).show();
+		}
+	},
+	_addGroup : function(groupId, groupName, nIdx) {
+		var sTpl = ['<li class="item">',
+		            '<label for="_gid_' + groupId + '"><span>' + groupName + '</span></label>',
+		            '<span></span>',
+		            '<input type="checkbox" id="_gid_' + groupId + '" class="input_chk NPI=a:select,r:' + (nIdx + 1) + '" name="groupIds" value="' + groupId + '">',
+		            '</li>'].join(' ');
+
+		jindo.$Element(this._elGroupList).append(sTpl);
+	},
+	_addNewGroupForm : function() {
+		var number = 0;
+
+		jindo.$A(this._groups).forEach(function(v,i,a) {
+			var regx = RegExp('관심종목' + ' (\\s?\\d+)');
+			var aMatch = regx.exec(v.groupName);
+			if(aMatch) {
+				number = Math.max(number, aMatch[1]);
+			}
+		});
+
+		var sTpl = ['<li class="add">',
+		            '<input type="text" class="input_txt" value="관심종목 ' + (number + 1) + '">',
+		            '<a href="#" class="_btn_add_ok">확인</a>',
+		            '<span class="bar"></span>',
+		            '<a href="#" class="_btn_add_cancel">취소</a>',
+		            '</li>'].join(' ');
+
+		// _ly_list가 숨겨져 있다면 _ly_blank를 숨기고 _ly_list 노출
+		var welLyContentsList = jindo.$Element(this._elLyGroupList);
+		if(welLyContentsList.visible() == false) {
+			jindo.$Element(this._elLyGroupBlank).hide();
+			welLyContentsList.show();
+		}
+
+		this._bAddState = true;
+
+		var welList = jindo.$Element(this._elGroupList);
+		welList.append(sTpl);
+		welList.query('INPUT[type=text]').select();
+	},
+	_isAddState : function() {
+		if(this._bAddState){
+			var okay = confirm('추가된 그룹이 편집중입니다. 저장하시겠습니까?');
+
+			if(okay) {
+				jindo.$Element(jindo.$$.getSingle('._btn_add_ok', this._el)).fireEvent("click");
+			} else {
+				jindo.$$.getSingle('.add INPUT', this._el).select();
+				return true;
+			}
+		}
+
+		return false;
+	},
+	_requestOpen : function() {
+		// 최초 로딩시 API로부터 그룹정보를 가져옴
+		var oAjax = new MyFinance.Util.Ajax('/mystock/api/getGroupList.nhn');
+		oAjax.onSuccess = jindo.$Fn(function(result) {
+			this._bAddState = false;
+			this._groups = result;
+			this._hideMessage();
+			this._drawGroupList(this._groups);
+			this._layerManager.show();
+		}, this).bind();
+		oAjax.onFailure = function(result) {
+			if(result.errorCode == 'authenticationFail') {
+				window.open('https://nid.naver.com/nidlogin.login?svctype=64&url=' + encodeURIComponent(location.protocol + '//' + location.host + '/item/refreshAfterPopupLogin.nhn'), 'login_popup', 'width=400,height=270,resizable=no');
+				return;
+			}
+		}
+		oAjax.request();
+	},
+	_showMessage : function(html) {
+		jindo.$Element(this._elLyGroup).hide();
+
+		var welLyMessage = jindo.$Element(this._elLyMessage);
+		welLyMessage.html(html);
+		welLyMessage.show();
+	},
+	_hideMessage : function() {
+		jindo.$Element(this._elLyMessage).hide();
+		jindo.$Element(this._elLyGroup).show();
+	},
+	_submit : function(groupId) {
+		var itemcodes = this.option('itemcodes');
+
+		if(itemcodes) {
+			var oAjax = new MyFinance.Util.Ajax('/mystock/api/addItems.nhn');
+			oAjax.onSuccess = jindo.$Fn(function(result) {
+				var sTpl = '';
+				if(result.resultType == 'ALL') {
+					sTpl = ['<p class="txt_inner type2">',
+					        '선택한 종목을<br><strong>' + result.targetGroup.groupName + '</strong> 그룹에<br>추가하였습니다.<br>',
+					        '<a href="/mystock/itemList.nhn?groupId=' + result.targetGroup.groupId + '" class="btn_spr btn_gomystock"><span class="blind">MY STCOK 확인</span></a>',
+					        '<button type="button" class="btn_spr btn_clse2 _btn_cancel"><span class="blind">닫기</span></button>',
+					        '</p>'].join(' ');
+				} else if(result.resultType == 'PART') {
+					var duplicatedItemnames = '';
+
+					var duplicatedItemnameArr = new Array();
+					jindo.$A(result.duplicatedItems).slice(0, 3).forEach(function(v,i,a) {
+						duplicatedItemnameArr[duplicatedItemnameArr.length] = v.itemname;
+					});
+
+					duplicatedItemnames = duplicatedItemnameArr.join(', ');
+
+					if(result.duplicatedItems.length > 3) {
+						duplicatedItemnames += '..';
+					}
+
+					sTpl = ['<p class="txt_inner type4">',
+					        '총 ' + result.duplicatedItems.length + '개 종목이<br> <strong>' + result.targetGroup.groupName + '</strong> 그룹에<br>이미 등록되어 이동되지 않습니다.<br>',
+					        '<span class="pdt ptcor">' + duplicatedItemnames + '</span>',
+					        '<button type="button" class="btn_spr btn_clse2 _btn_cancel"><span class="blind">닫기</span></button>',
+					        '</p>'].join(' ');
+				}
+
+				this._showMessage(sTpl);
+			}, this).bind();
+			oAjax.onFailure = jindo.$Fn(function(result) {
+				var sTpl = '';
+				if(result.errorCode == 'DuplicateItemExistException') {
+					sTpl = ['<p class="txt_inner type3">',
+					        '선택한 종목은<br><strong>' + result.errorData.targetGroup.groupName + '</strong> 그룹에<br>이미 등록되어 있습니다.<br>',
+					        '<button type="button" class="btn_spr btn_clse2 _btn_cancel">',
+					        '<span class="blind">닫기</span></button>',
+					        '</p>'].join(' ');
+
+					this._showMessage(sTpl);
+				} else if(result.errorCode == 'GroupTotalItemCountExceedException') {
+					var errorData = result.errorData;
+
+					if(errorData.targetGroupTotalItemCount >= errorData.maxGroupItemCount) {
+						sTpl = ['<p class="txt_inner type6">',
+						        '선택한 그룹은<br>100개 종목이 등록되어<br>더 이상 종목을 추가할 수 없습니다.<br>',
+						        '<button type="button" class="btn_spr btn_clse2 _btn_cancel"><span class="blind">닫기</span></button>',
+						        '</p>'].join(' ');
+					} else {
+						sTpl = ['<p class="txt_inner type6">',
+						        '선택한 그룹은<br>' + errorData.targetGroupTotalItemCount + '개 종목이 등록되어<br>',
+						        '<strong>' + (errorData.maxGroupItemCount - errorData.targetGroupTotalItemCount) + '개 종목까지</strong> 등록 가능합니다.<br>',
+						        '<button type="button" class="btn_spr btn_clse2 _btn_cancel"><span class="blind">닫기</span></button>',
+						        '</p>'].join(' ');
+					}
+
+					this._showMessage(sTpl);
+				} else {
+					alert(MyFinance.Util.unescapeMessage(result.errorMessage));
+				}
+			}, this).bind();
+			oAjax.request({
+				'groupId' : groupId,
+				'itemcodes' : itemcodes
+			});
+		}
+	},
+	open : function(itemcodes, button) {
+		this._layerManager.unlink(button);
+		this._layerManager.link(button);
+
+		if(this._layerManager.getVisible()) {
+			this.option('itemcodes', null);
+			this._layerManager.hide();
+		} else {
+			this.option('itemcodes', itemcodes);
+			this._elLyGroupList.scrollTop = 0;
+
+			var layerPosition = new jindo.LayerPosition(button, this._el, this.option('LayerPosition'));
+
+			layerPosition.setPosition();
+
+			this._requestOpen();
+		}
+	}
+}).extend(jindo.UIComponent);
