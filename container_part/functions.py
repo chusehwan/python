@@ -71,6 +71,25 @@ def get_value_make_excel_for_dp(ws):
         init_row_num += 1
     return ws, num_of_cntr, not_pkeu_list
 
+def get_value_make_excel_for_so(ws):
+    """클립보드에 복사된 so넘버 값을 워크시트에 저장"""
+    ws.cell(1, 1).value = 'SO_No'
+    ws.cell(1, 2).value = 'DBL_No'
+    # ws.cell(1, 3).value = 'Result'
+    init_row_num = 2
+    init_column_num = 1
+    copy_v = pyperclip.paste()
+    div_v = copy_v.split()
+    # 앞자리가 PKEU인건은 LIST에서 제거
+    so_list = []
+    for i in div_v:
+        so_list.append(i)
+    num_of_so = int(len(so_list))
+    for i in range(len(so_list)):
+        ws.cell(init_row_num, init_column_num).value = so_list[i]
+        init_row_num += 1
+    return ws, num_of_so, so_list
+
 
 def image_search_click(file_name, image_folder, x=0, y=0, confidence_parameter = 0.8):
     # ※주의※ 파일명 영어만 됨
